@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const ProgrammingEnv = require('../models/programmingEnvModel');
 const Course = require('../models/courseModel');
+const codeExecutionService = require('../services/codeExecutionService');
 const Joi = require('joi');
 
 /**
@@ -291,52 +292,17 @@ const executeCode = asyncHandler(async (req, res) => {
   const { code, input } = req.body;
 
   try {
-    // This is a simplified execution simulation
-    // In a real implementation, you would use a secure code execution service
-    let output = '';
-    let error = null;
-    let status = 'success';
-    const startTime = Date.now();
-
-    // Simulate code execution based on language
-    switch (environment.language) {
-      case 'javascript':
-        try {
-          // Very basic JavaScript execution (unsafe - for demo only)
-          output = 'JavaScript execution simulated';
-        } catch (err) {
-          error = err.message;
-          status = 'error';
-        }
-        break;
-      
-      case 'python':
-        output = 'Python execution simulated';
-        break;
-      
-      case 'html':
-        output = 'HTML rendered successfully';
-        break;
-      
-      case 'css':
-        output = 'CSS compiled successfully';
-        break;
-      
-      default:
-        output = `${environment.language} execution simulated`;
-    }
-
-    const executionTime = Date.now() - startTime;
+    const result = await codeExecutionService.executeCode(environment.language, code, input);
 
     // Create execution record
     const execution = {
       code,
       language: environment.language,
       input,
-      output,
-      error,
-      executionTime,
-      status
+      output: result.output,
+      error: result.error,
+      executionTime: result.executionTime,
+      status: result.status
     };
 
     environment.executions.push(execution);
@@ -351,10 +317,10 @@ const executeCode = asyncHandler(async (req, res) => {
     await environment.save();
 
     res.json({
-      output,
-      error,
-      executionTime,
-      status
+      output: result.output,
+      error: result.error,
+      executionTime: result.executionTime,
+      status: result.status
     });
 
   } catch (err) {

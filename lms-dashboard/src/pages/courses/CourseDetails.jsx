@@ -13,6 +13,7 @@ export default function CourseDetails() {
   const navigate = useNavigate();
 
   const [course, setCourse] = useState(null);
+  const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -43,6 +44,21 @@ export default function CourseDetails() {
     };
 
     fetchCourse();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchChapters = async () => {
+      try {
+        const response = await api.getChapters({ courseId: id });
+        setChapters(response.data.chapters || []);
+      } catch (err) {
+        console.error('Failed to fetch chapters:', err);
+      }
+    };
+
+    if (id) {
+      fetchChapters();
+    }
   }, [id]);
 
   // Fetch progress info from backend
@@ -78,8 +94,8 @@ export default function CourseDetails() {
   const completionPercent =
     totalItems === 0 ? 0 : Math.round((totalCompleted / totalItems) * 100);
 
-  const handleAddChapter = (chapterId) => {
-    navigate(`/courses/${id}/chapters/${chapterId}/lessons/create`);
+  const handleAddChapter = () => {
+    navigate(`/courses/${id}/chapters/create`);
   };
 
   const handleEnroll = async () => {
@@ -177,73 +193,73 @@ export default function CourseDetails() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-semibold">Chapters</h2>
                     {isInstructor && (
-                      <Link
-                        to={`/courses/${id}/chapters/create`}
+                      <button
+                        onClick={handleAddChapter}
                         className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
                       >
                         <FaPlus className="mr-2" />
                         Add Chapter
-                      </Link>
+                      </button>
                     )}
                   </div>
-                  {course.chapters?.map((chapter) => (
-                    <div key={chapter.id} className="border rounded-lg">
-                      <div className="p-4 bg-gray-50 flex justify-between items-center">
-                        <h3 className="font-medium">{chapter.title}</h3>
-                        {isInstructor && (
-                          <div className="flex space-x-2">
-                            <Link
-                              to={`/courses/${id}/chapters/${chapter.id}/edit`}
-                              className="text-primary hover:text-primary/90"
-                            >
-                              <FaEdit />
-                            </Link>
-                            <button
-                              onClick={() => handleAddChapter(chapter.id)}
-                              className="text-primary hover:text-primary/90"
-                            >
-                              <FaPlus />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="divide-y">
-                        {chapter.lessons?.map((lesson) => (
-                          <div
-                            key={lesson.id}
-                            className="p-4 flex items-center justify-between hover:bg-gray-50"
-                          >
-                            <Link
-                              to={`/courses/${id}/chapters/${chapter.id}/lessons/${lesson.id}`}
-                              className="flex items-center flex-1"
-                            >
-                              {lesson.type === 'video' ? (
-                                <FaPlay className="text-primary mr-3" />
-                              ) : lesson.type === 'quiz' ? (
-                                <FaQuestionCircle className="text-primary mr-3" />
-                              ) : (
-                                <FaFile className="text-primary mr-3" />
-                              )}
-                              <span>{lesson.title}</span>
-                            </Link>
-                            <div className="flex items-center space-x-4">
-                              {lesson.duration && (
-                                <span className="text-sm text-gray-500">{lesson.duration}</span>
-                              )}
-                              {isInstructor && (
-                                <Link
-                                  to={`/courses/${id}/chapters/${chapter.id}/lessons/${lesson.id}/edit`}
-                                  className="text-primary hover:text-primary/90"
-                                >
-                                  <FaEdit />
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  {chapters.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No chapters available yet.</p>
                     </div>
-                  ))}
+                  ) : (
+                    chapters.map((chapter) => (
+                      <div key={chapter._id} className="border rounded-lg">
+                        <div className="p-4 bg-gray-50 flex justify-between items-center">
+                          <h3 className="font-medium">{chapter.title}</h3>
+                          {isInstructor && (
+                            <div className="flex space-x-2">
+                              <Link
+                                to={`/chapters/${chapter._id}/edit`}
+                                className="text-primary hover:text-primary/90"
+                              >
+                                <FaEdit />
+                              </Link>
+                              <Link
+                                to={`/lessons/create?chapterId=${chapter._id}`}
+                                className="text-primary hover:text-primary/90"
+                              >
+                                <FaPlus />
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                        <div className="divide-y">
+                          {chapter.lessons?.map((lesson) => (
+                            <div
+                              key={lesson._id}
+                              className="p-4 flex items-center justify-between hover:bg-gray-50"
+                            >
+                              <Link
+                                to={`/lessons/${lesson._id}`}
+                                className="flex items-center flex-1"
+                              >
+                                <FaPlay className="text-primary mr-3" />
+                                <span>{lesson.title}</span>
+                              </Link>
+                              <div className="flex items-center space-x-4">
+                                {lesson.duration && (
+                                  <span className="text-sm text-gray-500">{lesson.duration}</span>
+                                )}
+                                {isInstructor && (
+                                  <Link
+                                    to={`/lessons/${lesson._id}/edit`}
+                                    className="text-primary hover:text-primary/90"
+                                  >
+                                    <FaEdit />
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>

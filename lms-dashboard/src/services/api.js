@@ -49,6 +49,20 @@ export const api = {
   getEnrolledCourses: (params = {}) => apiClient.get('/courses/enrolled/my-courses', { params }),
   getCourseProgress: (courseId) => apiClient.get(`/courses/${courseId}/full-progress`),
 
+  // Chapters
+  getChapters: (params = {}) => apiClient.get('/chapters', { params }),
+  getChapterById: (id) => apiClient.get(`/chapters/${id}`),
+  createChapter: (chapter) => apiClient.post('/chapters', chapter),
+  updateChapter: (id, chapter) => apiClient.put(`/chapters/${id}`, chapter),
+  deleteChapter: (id) => apiClient.delete(`/chapters/${id}`),
+
+  // Lessons
+  getLessons: (params = {}) => apiClient.get('/lessons', { params }),
+  getLessonById: (id) => apiClient.get(`/lessons/${id}`),
+  createLesson: (lesson) => apiClient.post('/lessons', lesson),
+  updateLesson: (id, lesson) => apiClient.put(`/lessons/${id}`, lesson),
+  deleteLesson: (id) => apiClient.delete(`/lessons/${id}`),
+
   // Videos
   getVideos: (params = {}) => apiClient.get('/videos', { params }),
   getVideoById: (id) => apiClient.get(`/videos/${id}`),

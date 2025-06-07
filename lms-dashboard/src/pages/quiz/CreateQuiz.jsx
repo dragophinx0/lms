@@ -3,65 +3,92 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Card from '../../components/common/Card';
+import { api } from '../../services/api';
 
 export default function CreateQuiz() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [quizData, setQuizData] = useState({
     title: '',
     description: '',
-    duration: 30,
+    timeLimit: 30,
     startDate: '',
     endDate: '',
-    passingScore: 70,
-    isEnabled: true,
-    questions: []
+    courseId: '',
+    questions: [],
+    settings: {
+      allowMultipleAttempts: false,
+      maxAttempts: 1,
+      showResults: true,
+      shuffleQuestions: false,
+      shuffleOptions: false
+    }
   });
 
   const [currentQuestion, setCurrentQuestion] = useState({
     question: '',
-    options: ['', '', '', ''],
-    correctAnswers: [],
-    isMultiple: false
+    options: [
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false }
+    ],
+    explanation: '',
+    points: 1
   });
 
   const handleQuizDataChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setQuizData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    if (name.startsWith('settings.')) {
+      const settingName = name.split('.')[1];
+      setQuizData(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          [settingName]: type === 'checkbox' ? checked : value
+        }
+      }));
+    } else {
+      setQuizData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleQuestionChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setCurrentQuestion(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
   };
 
   const handleOptionChange = (index, value) => {
     setCurrentQuestion(prev => ({
       ...prev,
-      options: prev.options.map((opt, i) => i === index ? value : opt)
+      options: prev.options.map((opt, i) => i === index ? { ...opt, text: value } : opt)
     }));
   };
 
   const handleCorrectAnswerToggle = (index) => {
-    setCurrentQuestion(prev => {
-      if (prev.isMultiple) {
-        const newCorrectAnswers = prev.correctAnswers.includes(index)
-          ? prev.correctAnswers.filter(i => i !== index)
-          : [...prev.correctAnswers, index];
-        return { ...prev, correctAnswers: newCorrectAnswers };
-      }
-      return { ...prev, correctAnswers: [index] };
-    });
+    setCurrentQuestion(prev => ({
+      ...prev,
+      options: prev.options.map((opt, i) => ({
+        ...opt,
+        isCorrect: i === index ? !opt.isCorrect : false // Only one correct answer
+      }))
+    }));
   };
 
   const addQuestion = () => {
-    if (!currentQuestion.question || currentQuestion.options.some(opt => !opt) || !currentQuestion.correctAnswers.length) {
+    if (!currentQuestion.question || currentQuestion.options.some(opt => !opt.text)) {
       toast.error('Please fill all question fields');
+      return;
+    }
+
+    if (!currentQuestion.options.some(opt => opt.isCorrect)) {
+      toast.error('Please select at least one correct answer');
       return;
     }
 
@@ -72,9 +99,14 @@ export default function CreateQuiz() {
 
     setCurrentQuestion({
       question: '',
-      options: ['', '', '', ''],
-      correctAnswers: [],
-      isMultiple: false
+      options: [
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false }
+      ],
+      explanation: '',
+      points: 1
     });
   };
 
@@ -92,12 +124,16 @@ export default function CreateQuiz() {
       return;
     }
 
+    setLoading(true);
     try {
-      // API call would go here
+      await api.createQuiz(quizData);
       toast.success('Quiz created successfully!');
       navigate('/quiz');
     } catch (error) {
-      toast.error('Failed to create quiz');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create quiz';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,15 +160,16 @@ export default function CreateQuiz() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration (minutes)
+                Time Limit (minutes)
               </label>
               <input
                 type="number"
-                name="duration"
-                value={quizData.duration}
+                name="timeLimit"
+                value={quizData.timeLimit}
                 onChange={handleQuizDataChange}
                 className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
                 required
+                min="1"
               />
             </div>
 
@@ -146,7 +183,6 @@ export default function CreateQuiz() {
                 value={quizData.startDate}
                 onChange={handleQuizDataChange}
                 className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
-                required
               />
             </div>
 
@@ -160,35 +196,67 @@ export default function CreateQuiz() {
                 value={quizData.endDate}
                 onChange={handleQuizDataChange}
                 className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
-                required
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passing Score (%)
+                Description
               </label>
-              <input
-                type="number"
-                name="passingScore"
-                value={quizData.passingScore}
+              <textarea
+                name="description"
+                value={quizData.description}
                 onChange={handleQuizDataChange}
                 className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
-                required
+                rows="3"
               />
             </div>
+          </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isEnabled"
-                checked={quizData.isEnabled}
-                onChange={handleQuizDataChange}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <label className="ml-2 block text-sm text-gray-700">
-                Enable Quiz
-              </label>
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-4">Quiz Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="settings.allowMultipleAttempts"
+                  checked={quizData.settings.allowMultipleAttempts}
+                  onChange={handleQuizDataChange}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label className="ml-2 block text-sm text-gray-700">
+                  Allow Multiple Attempts
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="settings.showResults"
+                  checked={quizData.settings.showResults}
+                  onChange={handleQuizDataChange}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label className="ml-2 block text-sm text-gray-700">
+                  Show Results After Submission
+                </label>
+              </div>
+
+              {quizData.settings.allowMultipleAttempts && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maximum Attempts
+                  </label>
+                  <input
+                    type="number"
+                    name="settings.maxAttempts"
+                    value={quizData.settings.maxAttempts}
+                    onChange={handleQuizDataChange}
+                    className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
+                    min="1"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -205,40 +273,61 @@ export default function CreateQuiz() {
                 value={currentQuestion.question}
                 onChange={handleQuestionChange}
                 className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
+                placeholder="Enter your question"
               />
-            </div>
-
-            <div className="flex items-center mb-4">
-              <input
-                type="checkbox"
-                name="isMultiple"
-                checked={currentQuestion.isMultiple}
-                onChange={handleQuestionChange}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <label className="ml-2 block text-sm text-gray-700">
-                Multiple correct answers
-              </label>
             </div>
 
             <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Options (click to mark as correct)
+              </label>
               {currentQuestion.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <input
-                    type={currentQuestion.isMultiple ? "checkbox" : "radio"}
-                    checked={currentQuestion.correctAnswers.includes(index)}
+                    type="radio"
+                    checked={option.isCorrect}
                     onChange={() => handleCorrectAnswerToggle(index)}
                     className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
                   />
                   <input
                     type="text"
-                    value={option}
+                    value={option.text}
                     onChange={(e) => handleOptionChange(index, e.target.value)}
                     placeholder={`Option ${index + 1}`}
                     className="flex-1 p-2 border rounded focus:ring-primary focus:border-primary"
                   />
                 </div>
               ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Explanation (optional)
+                </label>
+                <textarea
+                  name="explanation"
+                  value={currentQuestion.explanation}
+                  onChange={handleQuestionChange}
+                  className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
+                  rows="2"
+                  placeholder="Explain the correct answer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Points
+                </label>
+                <input
+                  type="number"
+                  name="points"
+                  value={currentQuestion.points}
+                  onChange={handleQuestionChange}
+                  className="w-full p-2 border rounded focus:ring-primary focus:border-primary"
+                  min="1"
+                />
+              </div>
             </div>
 
             <button
@@ -258,20 +347,26 @@ export default function CreateQuiz() {
               {quizData.questions.map((q, index) => (
                 <div key={index} className="border p-4 rounded">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">{q.question}</p>
-                      <ul className="mt-2 space-y-1">
+                    <div className="flex-1">
+                      <p className="font-medium mb-2">{q.question}</p>
+                      <ul className="space-y-1">
                         {q.options.map((opt, i) => (
-                          <li key={i} className={`flex items-center ${q.correctAnswers.includes(i) ? 'text-green-600' : ''}`}>
-                            {q.correctAnswers.includes(i) ? '✓' : '•'} {opt}
+                          <li key={i} className={`flex items-center ${opt.isCorrect ? 'text-green-600 font-medium' : ''}`}>
+                            {opt.isCorrect ? '✓' : '•'} {opt.text}
                           </li>
                         ))}
                       </ul>
+                      {q.explanation && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          <strong>Explanation:</strong> {q.explanation}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500 mt-1">Points: {q.points}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeQuestion(index)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 ml-4"
                     >
                       <FaTrash />
                     </button>
@@ -287,14 +382,16 @@ export default function CreateQuiz() {
             type="button"
             onClick={() => navigate('/quiz')}
             className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-50"
+            disabled={loading}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
+            disabled={loading}
           >
-            Create Quiz
+            {loading ? 'Creating...' : 'Create Quiz'}
           </button>
         </div>
       </form>

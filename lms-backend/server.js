@@ -27,6 +27,8 @@ app.use(morgan('dev'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/videos', require('./routes/videoRoutes'));
 app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/chapters', require('./routes/chapterRoutes'));
+app.use('/api/lessons', require('./routes/lessonRoutes'));
 app.use('/api/quizzes', require('./routes/quizRoutes'));
 app.use('/api/assessments', require('./routes/assessmentRoutes'));
 app.use('/api/discussions', require('./routes/discussionRoutes'));
@@ -47,6 +49,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       videos: '/api/videos',
       courses: '/api/courses',
+      chapters: '/api/chapters',
+      lessons: '/api/lessons',
       quizzes: '/api/quizzes',
       assessments: '/api/assessments',
       discussions: '/api/discussions',
